@@ -1,0 +1,8 @@
+200 OK → success
+201 Created → new resource created
+400 Bad Request → invalid input / missing fields
+401 Unauthorized → not logged in / invalid token
+403 Forbidden → logged in but not allowed
+404 Not Found → resource not found
+409 Conflict → duplicate / already exists
+500 Internal Server Error → backend crashed
