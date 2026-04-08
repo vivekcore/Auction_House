@@ -1,17 +1,25 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
 import { userAuth } from "../middleware/userMiddleware.js";
-import models from "../db/db.js";
-import mongoose from "mongoose";
+import mongoose from "../db/db.js";
+import { Account } from "../models/accoount.js";
+import { User } from "../models/userModel.js";
+
 
 const router: Router = Router();
 
 router.get("/balance", userAuth, async (req: Request, res: Response) => {
+  //@ts-ignore
+  console.log(req.userId);
   try {
-    const response = await models.accountsModel
+    const response = await Account
       //@ts-ignore
-      .findOne({ userId: req.userId })
-      .populate("userId", "username");
+      .findOne({userId:req.userId}).populate({
+        path:"userId",
+        model: User,
+        select:"name username email"
+      })
+    //const response = await Account.find();
     res.status(200).json({
       msg: response,
     });
@@ -21,6 +29,7 @@ router.get("/balance", userAuth, async (req: Request, res: Response) => {
     });
   }
 });
+
 router.post("/transfer", userAuth, async (req: Request, res: Response) => {
   const session = await mongoose.startSession();
 
@@ -28,8 +37,8 @@ router.post("/transfer", userAuth, async (req: Request, res: Response) => {
     session.startTransaction();
     const { amount, to } = req.body;
     //@ts-ignore
-    const account = await models.accountsModel.findOne({ userId: req.userId });
-    const toAccount = await models.accountsModel.findOne({userId: to});
+    const account = await Account.findOne({ userId: req.userId });
+    const toAccount = await Account.findOne({userId: to});
     if (!toAccount) {
       await session.abortTransaction();
       return res.status(400).json({
@@ -43,21 +52,21 @@ router.post("/transfer", userAuth, async (req: Request, res: Response) => {
       });
     }
 
-    await models.accountsModel.updateOne(
+    await Account.updateOne(
       //@ts-ignore
       { userId: req.userId },
       { $inc: { balance: -amount } },
     ).session(session)
-    await models.accountsModel.updateOne(
+    await Account.updateOne(
       { userId: to },
       { $inc: { balance: amount } },
     ).session(session)
 
     await session.commitTransaction();
     session.endSession();
-    
+
     res.json({
-        msg:"Amount transfered sucessfully",
+        msg:"Amount transfered sucessfully",  
     })
   } catch (error) {
     await session.abortTransaction();
