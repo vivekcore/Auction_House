@@ -1,34 +1,26 @@
 import type { Request, Response, NextFunction } from "express";
-import * as z from "zod";
-import Jwt from "jsonwebtoken"
-import dotenv from "dotenv"
+import dotenv from "dotenv";
+import { getAuth } from "../auth/auth.js";
+import { fromNodeHeaders } from "better-auth/node";
+
 dotenv.config();
-export const userAuth = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader) {
-    res.status(401).json({
-      msg: "Headers missing",
-    });
-    return;
+export const userAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const auth = getAuth();
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers)
+  });
+  if (!session) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
-  const token = authHeader.split(" ")[1];
-  if(!token){
-    return  res.status(401).json({
-      msg: "token missing",
-    });
-  }
-  const verify = Jwt.verify(token,process.env.JWT_SECRET as string);
-  console.log(verify);
-  if(!verify){
-    res.json({
-        msg: "Unauthrized",
-    })
-    return;
-  }
+  console.log(session.user.id);
   //@ts-ignore
-  req.userId = verify.userId;
- // const userData = req.body;
- 
+  req.userId = session.user.id;
+  //@ts-ignore
+  req.name = session.user.name;
 
   next();
 };
