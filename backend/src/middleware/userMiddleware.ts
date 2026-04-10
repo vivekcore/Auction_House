@@ -17,9 +17,7 @@ export const userAuth = async (
     return res.status(401).json({ error: "Unauthorized" });
   }
   console.log(session.user.id);
-  //@ts-ignore
   req.userId = session.user.id;
-  //@ts-ignore
   req.name = session.user.name;
 
   next();

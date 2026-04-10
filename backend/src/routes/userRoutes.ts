@@ -3,8 +3,7 @@ import type { Request, Response } from "express";
 import * as z from "zod";
 import dotenv from "dotenv";
 import { userAuth } from "../middleware/userMiddleware.js";
-import { User } from "../models/userModel.js";
-import { Account } from "../models/accoount.js";
+import { UserModel } from "../models/userModel.js";
 dotenv.config();
 const router: Router = Router();
 
@@ -31,7 +30,7 @@ router.put("/update", userAuth, async (req, res) => {
     const updateData: { username?: string; name?: string } = {};
 
     if (userData.username) {
-      const isExist = await User.find({ username: userData.username });
+      const isExist = await UserModel.find({ username: userData.username });
 
       if (isExist.length !== 0) {
         return res.json({
@@ -43,8 +42,7 @@ router.put("/update", userAuth, async (req, res) => {
 
     if (userData.name) updateData.name = userData.name;
 
-    const response = await User.updateOne(
-      //@ts-ignore
+    const response = await UserModel.updateOne(
       { _id: req.userId },
       { $set: updateData },
     );
@@ -61,7 +59,7 @@ router.put("/update", userAuth, async (req, res) => {
 
 router.get("/bulk", userAuth, async (req: Request, res: Response) => {
   try {
-    const response = await User.find();
+    const response = await UserModel.find();
     console.log(response);
     res.json({
       msg: response,
@@ -82,8 +80,7 @@ router.get("/search", userAuth, async (req: Request, res: Response) => {
     });
   }
   try {
-    //@ts-ignore
-    const response = await User.find({
+    const response = await UserModel.find({
       $or: [
         { username: { $regex: name, $options: "i" } },
         { name: { $regex: name, $options: "i" } },
