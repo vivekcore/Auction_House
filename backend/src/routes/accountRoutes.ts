@@ -35,8 +35,8 @@ router.post("/transfer", userAuth, async (req: Request, res: Response) => {
     session.startTransaction();
     const { amount, to } = req.body;
 
-    const account = await AccountModel.findOne({ userId: req.userId });
-    const toAccount = await AccountModel.findOne({ userId: to });
+    const account = await AccountModel.findOne({ userId: new mongoose.Types.ObjectId(req.userId) });
+    const toAccount = await AccountModel.findOne({ userId: new mongoose.Types.ObjectId(to) });
     if (!toAccount) {
       await session.abortTransaction();
       return res.status(400).json({

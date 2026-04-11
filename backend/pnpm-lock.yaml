@@ -50,12 +50,25 @@ importers:
       mongoose:
         specifier: ^9.3.3
         version: 9.3.3
+      mongoose-paginate-v2:
+        specifier: ^1.9.4
+        version: 1.9.4(mongoose@9.3.3)
+      node-cron:
+        specifier: ^4.2.1
+        version: 4.2.1
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
       zod:
         specifier: ^4.3.6
         version: 4.3.6
+    devDependencies:
+      '@types/mongoose-paginate-v2':
+        specifier: ^1.6.5
+        version: 1.6.5(mongoose@9.3.3)
+      '@types/node-cron':
+        specifier: ^3.0.11
+        version: 3.0.11
 
 packages:
 
@@ -182,8 +195,15 @@ packages:
   '@types/jsonwebtoken@9.0.10':
     resolution: {integrity: sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA==}
 
+  '@types/mongoose-paginate-v2@1.6.5':
+    resolution: {integrity: sha512-OdnsqewLwCtZvExUHuL+KDVlZ6OdnzGcUdPpEqMRVKZ6mWy7fgnt1IkLSs8Zugv5cUTLVT46hjmL2OPWtml1Rw==}
+    deprecated: This is a stub types definition. mongoose-paginate-v2 provides its own type definitions, so you do not need this installed.
+
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
+
+  '@types/node-cron@3.0.11':
+    resolution: {integrity: sha512-0ikrnug3/IyneSHqCBeslAhlK2aBfYek1fGo4bP4QnZPmiqSGRK+Oy7ZMisLWkesffJvQ1cqAcBnJC+8+nxIAg==}
 
   '@types/node@25.5.2':
     resolution: {integrity: sha512-tO4ZIRKNC+MDWV4qKVZe3Ql/woTnmHDr5JD8UI5hn2pwBrHEwOEMZK7WlNb5RKB6EoJ02gwmQS9OrjuFnZYdpg==}
@@ -533,9 +553,23 @@ packages:
       socks:
         optional: true
 
+  mongoose-lean-virtuals@1.1.1:
+    resolution: {integrity: sha512-8chOqpVE3bcoWT2pIgcJeIZlXaOfQCavZgQZF4qytUtjRBqsNMyzUoR16qdw9XL2kC478N8iA8z0AA+NSS0d1A==}
+    engines: {node: '>=16.20.1'}
+    peerDependencies:
+      mongoose: '>=5.11.10'
+
+  mongoose-paginate-v2@1.9.4:
+    resolution: {integrity: sha512-0LOsVEQmjrbJKVDi/IvFEhIezmuRjUE4loGgslv57j9nK/NMC+mbKT0QnaPSPpib4lByKVBcy3VbDa1TvlHZjA==}
+    engines: {node: '>=4.0.0'}
+
   mongoose@9.3.3:
     resolution: {integrity: sha512-sfv5LOIPWeN5o/281kp4Rx9ZnuXb0g8CtvBTi7trYQs2PYYx8LWXegXxG3ar7VEns1o+d4h9LI/Dtc7dTTyYmA==}
     engines: {node: '>=20.19.0'}
+
+  mpath@0.8.4:
+    resolution: {integrity: sha512-DTxNZomBcTWlrMW76jy1wvV37X/cNNxPW1y2Jzd4DZkAaC5ZGsm8bfGfNOthcDuRJujXLqiuS6o3Tpy0JEoh7g==}
+    engines: {node: '>=4.0.0'}
 
   mpath@0.9.0:
     resolution: {integrity: sha512-ikJRQTk8hw5DEoFVxHG1Gn9T/xcjtdnOKIU1JTmGjZZlg9LST2mBLmcX3/ICIbgJydT2GOc15RnNy5mHmzfSew==}
@@ -559,6 +593,10 @@ packages:
   node-addon-api@8.7.0:
     resolution: {integrity: sha512-9MdFxmkKaOYVTV+XVRG8ArDwwQ77XIgIPyKASB1k3JPq3M8fGQQQE3YpMOrKm6g//Ktx8ivZr8xo1Qmtqub+GA==}
     engines: {node: ^18 || ^20 || >= 21}
+
+  node-cron@4.2.1:
+    resolution: {integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==}
+    engines: {node: '>=6.0.0'}
 
   node-gyp-build@4.8.4:
     resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
@@ -813,7 +851,15 @@ snapshots:
       '@types/ms': 2.1.0
       '@types/node': 25.5.2
 
+  '@types/mongoose-paginate-v2@1.6.5(mongoose@9.3.3)':
+    dependencies:
+      mongoose-paginate-v2: 1.9.4(mongoose@9.3.3)
+    transitivePeerDependencies:
+      - mongoose
+
   '@types/ms@2.1.0': {}
+
+  '@types/node-cron@3.0.11': {}
 
   '@types/node@25.5.2':
     dependencies:
@@ -1124,6 +1170,17 @@ snapshots:
       bson: 7.2.0
       mongodb-connection-string-url: 7.0.1
 
+  mongoose-lean-virtuals@1.1.1(mongoose@9.3.3):
+    dependencies:
+      mongoose: 9.3.3
+      mpath: 0.8.4
+
+  mongoose-paginate-v2@1.9.4(mongoose@9.3.3):
+    dependencies:
+      mongoose-lean-virtuals: 1.1.1(mongoose@9.3.3)
+    transitivePeerDependencies:
+      - mongoose
+
   mongoose@9.3.3:
     dependencies:
       kareem: 3.2.0
@@ -1141,6 +1198,8 @@ snapshots:
       - snappy
       - socks
 
+  mpath@0.8.4: {}
+
   mpath@0.9.0: {}
 
   mquery@6.0.0: {}
@@ -1152,6 +1211,8 @@ snapshots:
   negotiator@1.0.0: {}
 
   node-addon-api@8.7.0: {}
+
+  node-cron@4.2.1: {}
 
   node-gyp-build@4.8.4: {}
 

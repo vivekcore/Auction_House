@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import { getAuth } from "../auth/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
+import mongoose from "mongoose";
 
 dotenv.config();
 export const userAuth = async (
@@ -17,7 +18,7 @@ export const userAuth = async (
     return res.status(401).json({ error: "Unauthorized" });
   }
   console.log(session.user.id);
-  req.userId = session.user.id;
+  req.userId = new mongoose.Types.ObjectId(session.user.id);
   req.name = session.user.name;
 
   next();

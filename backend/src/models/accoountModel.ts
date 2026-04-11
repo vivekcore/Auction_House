@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { type InferSchemaType } from "mongoose";
 import { Types } from "mongoose";
 
 const AccountSchema = new mongoose.Schema({
@@ -7,5 +7,5 @@ const AccountSchema = new mongoose.Schema({
 },{
   timestamps: true,
 });
-
-export const AccountModel = mongoose.model("bankaccount",AccountSchema);
+type AccountDocument = InferSchemaType<typeof AccountSchema>
+export const AccountModel = mongoose.model<AccountDocument>("bankaccount",AccountSchema);

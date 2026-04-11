@@ -1,4 +1,5 @@
 
+import type { InferSchemaType } from "mongoose";
 import mongoose from "../db/db.js";
 
 const userSchema = new mongoose.Schema(
@@ -27,4 +28,6 @@ const userSchema = new mongoose.Schema(
   },
 );
 userSchema.index({name:"text",username:"text"});
-export const UserModel = mongoose.model("User", userSchema);
+
+type userDocument = InferSchemaType<typeof userSchema>;
+export const UserModel = mongoose.model<userDocument>("User", userSchema);

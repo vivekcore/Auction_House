@@ -1,20 +1,25 @@
-import mongoose from "mongoose";
+import mongoose, {Document, type InferSchemaType} from "mongoose";
+import paginate from 'mongoose-paginate-v2';
 
-
-const AuctionSchem = new mongoose.Schema(
+const AuctionSchema = new mongoose.Schema(
   {
     title: {type: String, required: true, minLength: 5, maxLength: 100,},
     description: {type: String, required: true, minLength: 10, maxLength: 500,},
-    status: {type:String, enum: ["active","ended"]},
+    status: {type:String, enum: ["active","ended"],default:"active"},
     sellerId: {  type: mongoose.Types.ObjectId,  require: true,  ref: "user"},
     winnerId: {  type: mongoose.Types.ObjectId,  default:null},
     sellingPrice: {  type: Number,  required: true,  min:5,},
     finalPrice: {  type: Number,  default:null},
-    endtime: { type: Date,require: true },
+    endDate: { type: Date,require: true },
+    createdAt:{type:Date,default:Date.now}
   },
   {
     timestamps: true,
   },
 );
-
-export const AuctionModel = mongoose.model("auction",AuctionSchem);
+type AuctionDocument = InferSchemaType<typeof AuctionSchema>;
+AuctionSchema.plugin(paginate)
+AuctionSchema.index({endDate:1,status:1,})
+AuctionSchema.index({status:1,finalPrice:1})
+AuctionSchema.index({endDate:1},{expireAfterSeconds:0})
+export const AuctionModel = mongoose.model<AuctionDocument, mongoose.PaginateModel<AuctionDocument>>("auction",AuctionSchema);

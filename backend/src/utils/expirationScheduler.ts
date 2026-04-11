@@ -1,0 +1,58 @@
+import cron from "node-cron";
+import { AuctionModel } from "../models/auctionModel.js";
+import mongoose from "../db/db.js";
+import { AccountModel } from "../models/accoountModel.js";
+
+export const startExpirationJob = () => {
+  cron.schedule("*/5 * * * *", async () => {
+    const now = new Date();
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      const result = await AuctionModel.updateMany(
+        {
+          endDate: { $lte: now },
+          status: "active",
+        },
+        {
+          $set: {
+            status: "ended",
+          },
+        },
+      ).session(session);
+
+      const endedAuctions = await AuctionModel.find({
+        status: "ended",
+        finalPrice: { $gte: 5 },
+      }).session(session);
+      if(endedAuctions.length > 0){
+      for (const auction of endedAuctions) {
+        const { sellerId, winnerId, finalPrice } = auction;
+        if (sellerId && winnerId && finalPrice) {
+          // Add money to seller
+          await AccountModel.findOneAndUpdate(
+            { userId: sellerId },
+            { $inc: { balance: finalPrice } },
+          ).session(session);
+          // Deduct from winner
+          await AccountModel.findOneAndUpdate(
+            { userId: winnerId },
+            { $inc: { balance: -finalPrice } },
+          ).session(session);
+        }
+      }
+    }
+      await session.commitTransaction();
+      const modCount = result.modifiedCount;
+      if (modCount > 0) {
+        console.log(`Updated ${modCount} documents to 'expired' status`);
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      console.error(" Error in expiration job:", error);
+    } finally {
+      session.endSession();
+    }
+  });
+  console.log("Expiration status update job started (every 5 minutes)");
+};
