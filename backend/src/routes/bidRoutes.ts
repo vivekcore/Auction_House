@@ -42,7 +42,7 @@ router.post("/place", userAuth, async (req: Request, res: Response) => {
     }
     const checkBalance = await AccountModel.findOne({ userId: req.userId });
 
-    if (checkBalance && checkBalance.balance < bidData.amount) {
+    if (checkBalance && checkBalance.availableBalance < bidData.amount) {
       return res.json({
         message: "Insufficent balance!",
       });
@@ -64,11 +64,32 @@ router.post("/place", userAuth, async (req: Request, res: Response) => {
           auctionId: new mongoose.Types.ObjectId(bidData.auctionId),
           bidderId: req.userId,
           amount: bidData.amount,
+          isLocked:true,
+          isActive:true,
+          lockedAt: new Date(),
         },
       ],
       { session },
     );
+    if(checkBalance?.lockedAmount){
+      const lockedAmount = checkBalance?.lockedAmount + bidData.amount;
+      const availableBalance = checkBalance.balance - lockedAmount;
 
+       await AccountModel.findOneAndUpdate(
+      {userId:req.userId},
+      {
+        $set:{availableBalance,lockedAmount }
+      }
+    ).session(session)
+    }
+    else{
+      await session.abortTransaction();
+      return res.status(500).json({
+        message:"Server error",
+      })
+    }
+    
+   
     await AuctionModel.findByIdAndUpdate(
       bidData.auctionId,
       {

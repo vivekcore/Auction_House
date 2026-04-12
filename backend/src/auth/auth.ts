@@ -57,9 +57,11 @@ export function createAuth() {
       user: {
         create: {
           after: async (user, context) => {
+            const balance = 1 + Math.random() * 10000;
             await AccountModel.insertOne({
               userId:new mongoose.Types.ObjectId(user.id),
-              balance: 1 + Math.random() * 10000,
+              balance,
+              availableBalance:balance,
             });
           },
         },

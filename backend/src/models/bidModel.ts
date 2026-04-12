@@ -11,6 +11,9 @@ const BidSchema = new mongoose.Schema(
     },
     bidderId: { type: mongoose.Types.ObjectId, required: true, ref: "user" },
     amount: { type: Number, required: true },
+    isLocked: {type:Boolean,default:false},
+    isActive: {type:Boolean,default:false},
+    lockedAt: {type:Date},
   },
   {
     timestamps: true,

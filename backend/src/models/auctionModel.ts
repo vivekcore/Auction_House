@@ -11,7 +11,6 @@ const AuctionSchema = new mongoose.Schema(
     sellingPrice: {  type: Number,  required: true,  min:5,},
     finalPrice: {  type: Number,  default:null},
     endDate: { type: Date,require: true },
-    createdAt:{type:Date,default:Date.now}
   },
   {
     timestamps: true,

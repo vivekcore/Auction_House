@@ -3,7 +3,6 @@ import { userAuth } from "../middleware/userMiddleware.js";
 import z from "zod";
 import { AuctionModel } from "../models/auctionModel.js";
 import mongoose from "../db/db.js";
-import { AccountModel } from "../models/accoountModel.js";
 
 const router: Router = Router();
 

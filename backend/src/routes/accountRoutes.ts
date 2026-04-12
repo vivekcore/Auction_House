@@ -8,7 +8,7 @@ import { UserModel } from "../models/userModel.js";
 const router: Router = Router();
 
 router.get("/balance", userAuth, async (req: Request, res: Response) => {
-  console.log(req.userId);
+
   try {
     const response = await AccountModel.findOne({
       userId: req.userId,

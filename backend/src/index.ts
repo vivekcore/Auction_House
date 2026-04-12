@@ -7,6 +7,7 @@ import rootRouter from "./routes/index.js";
 import { toNodeHandler } from "better-auth/node";
 import { createAuth, getAuth } from "./auth/auth.js";
 import { startExpirationJob } from "./utils/expirationScheduler.js";
+import { errorHandler } from "./middleware/error.middleware.js";
 const app: Application = express();
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.listen(process.env.PORT, async () => {
     const auth = getAuth();
     app.all("/api/v1/auth/{*path}", toNodeHandler(auth));
     app.use("/api/v1", rootRouter);
+    app.use(errorHandler);
     console.log("Connected to DB & listning at port " + process.env.PORT);
     startExpirationJob();
   } catch (error) {
