@@ -13,7 +13,7 @@ const BidSchema = new mongoose.Schema(
     amount: { type: Number, required: true },
     isLocked: {type:Boolean,default:false},
     isActive: {type:Boolean,default:false},
-    lockedAt: {type:Date},
+    lockedAt: {type:Date,default: new Date()},
   },
   {
     timestamps: true,
