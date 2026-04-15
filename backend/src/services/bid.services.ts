@@ -42,6 +42,9 @@ export const bidServices = {
     if (lastbid && amount <= lastbid.amount) {
       throw new ApiError(400, "Bid amount must be greater than current bid");
     }
+    if(lastbid?.bidderId === id){
+      throw new ApiError(400, "Wait before someone out bids you");
+    }
 
     const session = await mongoose.startSession();
     try {
@@ -124,7 +127,7 @@ export const bidServices = {
   },
   async myBids(id: mongoose.Types.ObjectId, page: number, limit: number) {
     const result = await BidModel.paginate(
-      { bidderId: id },
+      { bidderId: id,isActive:true },
       {
         page,
         limit,

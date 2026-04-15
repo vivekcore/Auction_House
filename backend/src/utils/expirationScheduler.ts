@@ -41,7 +41,7 @@ export const startExpirationJob = () => {
               { $inc: { lockedAmount: -finalPrice } },
             ).session(session);
             // Set winner Active bid false
-            BidModel.findOneAndUpdate(
+            await BidModel.findOneAndUpdate(
               { bidderId: winnerId, isActive: true, isLocked: true },
               { $set: { isActive: false, isLocked: false } },
             ).session(session);
