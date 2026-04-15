@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { AuctionModel } from "../models/auctionModel.js";
 import mongoose from "../db/db.js";
 import { AccountModel } from "../models/accoountModel.js";
+import { BidModel } from "../models/bidModel.js";
 
 export const startExpirationJob = () => {
   cron.schedule("*/5 * * * *", async () => {
@@ -25,23 +26,28 @@ export const startExpirationJob = () => {
         status: "ended",
         finalPrice: { $gte: 5 },
       }).session(session);
-      if(endedAuctions.length > 0){
-      for (const auction of endedAuctions) {
-        const { sellerId, winnerId, finalPrice } = auction;
-        if (sellerId && winnerId && finalPrice) {
-          // Add money to seller
-          await AccountModel.findOneAndUpdate(
-            { userId: sellerId },
-            { $inc: { balance: finalPrice } },
-          ).session(session);
-          // Deduct from winner
-          await AccountModel.findOneAndUpdate(
-            { userId: winnerId },
-            { $inc: { balance: -finalPrice } },
-          ).session(session);
+      if (endedAuctions.length > 0) {
+        for (const auction of endedAuctions) {
+          const { sellerId, winnerId, finalPrice } = auction;
+          if (sellerId && winnerId && finalPrice) {
+            // Add money to seller
+            await AccountModel.findOneAndUpdate(
+              { userId: sellerId },
+              { $inc: { balance: finalPrice } },
+            ).session(session);
+            // Deduct from winner Locked amount
+            await AccountModel.findOneAndUpdate(
+              { userId: winnerId },
+              { $inc: { lockedAmount: -finalPrice } },
+            ).session(session);
+            // Set winner Active bid false
+            BidModel.findOneAndUpdate(
+              { bidderId: winnerId, isActive: true, isLocked: true },
+              { $set: { isActive: false, isLocked: false } },
+            ).session(session);
+          }
         }
       }
-    }
       await session.commitTransaction();
       const modCount = result.modifiedCount;
       if (modCount > 0) {

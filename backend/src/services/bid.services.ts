@@ -46,23 +46,22 @@ export const bidServices = {
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
-      if (auction.winnerId === id) {
-        const bidAmount = await BidModel.findOne({ auctionId, bidderId: id })
-          .sort({ amount: -1 })
-          .session(session);
-        if (!bidAmount) {
-          throw new ApiError(400, "account not found");
-        }
-        const lockedAmount = checkBalance?.lockedAmount - bidAmount.amount;
-        const availableBalance = checkBalance.balance - lockedAmount;
-        await AccountModel.findOneAndUpdate(
-          { userId: id },
-          {
-            $set: { availableBalance, lockedAmount },
-          },
-          { new: true, runValidators: true },
-        ).session(session);
+
+      const previousBids = await BidModel.find({
+        auctionId,
+        isActive: true,
+        isLocked: true,
+      });
+      for (const bids of previousBids) {
+        const { bidderId, amount, _id } = bids;
+        await AccountModel.findByIdAndUpdate(bidderId, {
+          $inc: { balance: amount, lockedAmount: -amount },
+        }).session(session);
+        await BidModel.findByIdAndUpdate(_id, {
+          $set: { isActive: false, isLocked: false },
+        }).session(session);
       }
+
       const response = await BidModel.create(
         [
           {
@@ -71,24 +70,19 @@ export const bidServices = {
             amount,
             isLocked: true,
             isActive: true,
-            lockedAt: new Date(),
           },
         ],
         { session },
       );
-      const Balance = await AccountModel.findById(id).session(session);
-      let updatedBalance;
-      if (Balance?.lockedAmount) {
-        const lockedAmount = Balance?.lockedAmount + amount;
-        const availableBalance = Balance?.balance - lockedAmount;
-        updatedBalance = await AccountModel.findOneAndUpdate(
-          { userId: id },
-          {
-            $set: { availableBalance, lockedAmount },
-          },
-          { new: true, runValidators: true },
-        ).session(session);
-      }
+
+      const updatedBalance = await AccountModel.findOneAndUpdate(
+        { userId: id },
+        {
+          $inc: { balance: -amount, lockedAmount: +amount },
+        },
+        { new: true, runValidators: true },
+      ).session(session);
+
       const UpdatedAuction = await AuctionModel.findByIdAndUpdate(
         auctionId,
         {

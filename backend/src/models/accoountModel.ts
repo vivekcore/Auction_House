@@ -1,18 +1,42 @@
-import mongoose, { type InferSchemaType ,Document } from "mongoose";
-interface IAccount extends Document {
-  userId: mongoose.Types.ObjectId,
-  balance: String,
-  lockedAmount: Number,
-  availableBalance: Number,
-}
-const AccountSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
-  balance: { type: Number,default:0 },
-  lockedAmount: {type: Number, default: 0},
-  availableBalance: {type:Number,default:0}
-},
-{
-  timestamps: true,
+import mongoose, { Schema,type HydratedDocument, Model,type InferSchemaType } from "mongoose";
+
+const AccountSchema = new Schema(
+  {
+    userId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "user", 
+      required: true 
+    },
+    balance: { 
+      type: Number, 
+      default: 0 
+    },
+    lockedAmount: { 
+      type: Number, 
+      default: 0 
+    },
+  },
+  {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+    timestamps: true,
+  }
+);
+
+// Define virtual AFTER schema (stable way)
+AccountSchema.virtual("availableBalance").get(function (this: any): number {
+  return (this.balance ?? 0) - (this.lockedAmount ?? 0);
 });
-type AccountDocument = InferSchemaType<typeof AccountSchema>
-export const AccountModel = mongoose.model<AccountDocument>("bankaccount",AccountSchema);
+
+// Base type from schema
+type AccountBase = InferSchemaType<typeof AccountSchema>;
+
+// Extend with virtuals manually (this fixes the TS error)
+export type AccountDocument = AccountBase & {
+  availableBalance: number;
+  // Add more virtuals here in future, e.g. totalLocked?: number;
+};
+
+// Model
+export const AccountModel: Model<AccountDocument> = 
+  mongoose.model<AccountDocument>("BankAccount", AccountSchema);
