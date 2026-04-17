@@ -8,7 +8,7 @@ export const bidController = {
       const data = req.body;
       const bidplaced = await bidServices.placeBid(req.userId, data);
       res.status(200).json({
-        status: true,
+        success: true,
         message: "Bid Places sucessfully",
         data: bidplaced,
       });
@@ -17,10 +17,10 @@ export const bidController = {
 
   getAllBidsOnAuction: catchAsync(
     async (req: Request, res: Response, next: NextFunction) => {
-      const { auctionId } = req.params;
+      const {auctionId}  = req.params;
       const allbids = await bidServices.getAllBidsOnAuction(auctionId);
       res.status(200).json({
-        status: true,
+        success: true,
         message: "All bids on auction",
         data: allbids,
       });
@@ -33,7 +33,7 @@ export const bidController = {
       const limit = parseInt(req.query.limit as string) || 10;
       const myBids = await bidServices.myBids(req.userId, page, limit);
       res.status(200).json({
-        status: true,
+        success: true,
         message: "My Bids on all auctions",
         data: myBids,
       });

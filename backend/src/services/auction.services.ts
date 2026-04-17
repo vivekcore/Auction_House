@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import ApiError from "../utils/apiError.js";
 import { AuctionModel } from "../models/auctionModel.js";
 import { mongoId } from "../utils/mongoId.js";
+import { AccountModel } from "../models/accoountModel.js";
+import { BidModel } from "../models/bidModel.js";
 export const auctionServices = {
   async createAuction(id: mongoose.Types.ObjectId, Data: any) {
     const zodSchem = z.object({
@@ -55,25 +57,26 @@ export const auctionServices = {
   },
 
   async findAuctionByID(auctionId: any) {
+   
+    
     const zodSchema = z.object({
       auctionID: mongoId("auctionId"),
     });
-    const result = zodSchema.safeParse(auctionId);
+    const result = zodSchema.safeParse({auctionID:auctionId});
     if (!result.success) {
-      throw new ApiError(400, JSON.stringify(result.error?.format()));
+      throw new ApiError(400, JSON.stringify(result.error.format()));
     }
     const { auctionID } = result.data;
-    const response = await AuctionModel.findById(
-      new mongoose.Types.ObjectId(auctionID),
-    );
+    const response = await AuctionModel.findById(auctionID);
     if (!response) {
       throw new ApiError(400, "Aucton not found");
     }
     return response;
   },
   async myAuctons(id: mongoose.Types.ObjectId, page: number, limit: number) {
+    console.log("reached myauctons")
     const result = await AuctionModel.paginate(
-      { sellerId: id },
+      { sellerId: id},
       {
         page,
         limit,
@@ -96,10 +99,12 @@ export const auctionServices = {
   },
 
   async mannualEndAuction(id:mongoose.Types.ObjectId,auctionId: any) {
+       const session =  await mongoose.startSession();
+           session.startTransaction();
     const zodSchema = z.object({
       auctionID: mongoId("auctionId"),
     });
-    const result = zodSchema.safeParse(auctionId);
+    const result = zodSchema.safeParse({auctionID:auctionId});
     if (!result.success) {
       throw new ApiError(400, JSON.stringify(result.error?.format()));
     }
@@ -111,14 +116,36 @@ export const auctionServices = {
     if(auction.status === "ended"){
         throw new ApiError(400,"Auction already ended");
     }
-    const updatedAuction = await AuctionModel.findOneAndUpdate(
+ 
+    try {
+  
+      const updatedAuction = await AuctionModel.findOneAndUpdate(
         {sellerId:id},
         {$set:{status:"ended"}},
-        {new:true,runValidators:true}
-    );
-    if(!updatedAuction){
-        throw new ApiError(400,"Failed to update");
+        {returnDocument:"after",runValidators:true}
+    ).session(session);
+    if(auction.winnerId && auction.finalPrice){
+      //debited from winner
+      await AccountModel.findByIdAndUpdate(auction.winnerId,
+        {$inc:{lockedAmount: -auction.finalPrice}}
+      ).session(session);
+      //credited to seller
+      await AccountModel.findByIdAndUpdate(auction.sellerId,
+        {$inc:{balance: auction.finalPrice}}
+      ).session(session);
+      //updated active bid
+      await BidModel.findOneAndUpdate({bidderId:auction.winnerId,isActive:true,isLocked:true},
+        {$set:{isActive:false,isLocked:false}}
+      ).session(session);
     }
     return updatedAuction;
+    } catch (error) {
+      await session.abortTransaction();
+      throw new ApiError(400,JSON.stringify(error))
+    }
+    finally{
+      session.endSession();
+    }
+   
   },
 };

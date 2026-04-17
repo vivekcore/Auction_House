@@ -7,6 +7,8 @@ import { AuctionModel } from "../models/auctionModel.js";
 import { AccountModel } from "../models/accoountModel.js";
 export const bidServices = {
   async placeBid(id: mongoose.Types.ObjectId, Data: any) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     const zodSchema = z.object({
       auctionId: mongoId("auctionId"),
       amount: z
@@ -18,6 +20,7 @@ export const bidServices = {
     if (!result.success) {
       throw new ApiError(400, JSON.stringify(result.error.format()));
     }
+    
     const { auctionId, amount } = result.data;
     const auction = await AuctionModel.findById(auctionId);
     if (!auction) {
@@ -46,9 +49,9 @@ export const bidServices = {
       throw new ApiError(400, "Wait before someone out bids you");
     }
 
-    const session = await mongoose.startSession();
+    
     try {
-      session.startTransaction();
+      
 
       const previousBids = await BidModel.find({
         auctionId,
@@ -110,7 +113,7 @@ export const bidServices = {
     const zodSchema = z.object({
       auctionID: mongoId("auctionId"),
     });
-    const result = zodSchema.safeParse(auctionId);
+    const result = zodSchema.safeParse({auctionID:auctionId});
     if (!result.success) {
       throw new ApiError(400, JSON.stringify(result.error.format()));
     }

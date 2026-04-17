@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import { AccountModel } from "../models/accoountModel.js";
 import ApiError from "../utils/apiError.js";
 import { UserModel } from "../models/userModel.js";
-import { abort } from "node:process";
 import z from "zod";
 import { mongoId } from "../utils/mongoId.js";
 export const accountServices = {
@@ -53,7 +52,7 @@ export const accountServices = {
     const fromUser = await AccountModel.findOneAndUpdate(
       { userId: id },
       { $inc: { balance: -amount } },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).populate({
         path:"userId",
         model:UserModel,
@@ -62,7 +61,7 @@ export const accountServices = {
     const toUser = await AccountModel.findOneAndUpdate(
       { userId: new mongoose.Types.ObjectId(to) },
       { $inc: { balance: amount } },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).populate({
         path:"userId",
         model:UserModel,

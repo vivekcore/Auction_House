@@ -6,7 +6,7 @@ const router: Router = Router();
 
 router.post("/create", userAuth,auctionController.createAuction);
 router.get("/list", userAuth,auctionController.allActiveAuctions);
-router.get("/:id", userAuth, auctionController.findAuctionById);
 router.get("/my", userAuth,auctionController.myAuctons);
+router.get("/:id", userAuth, auctionController.findAuctionById);
 router.post("/:id/end", userAuth,auctionController.mannualEndAuction);
 export default router;

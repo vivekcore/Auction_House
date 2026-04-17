@@ -26,7 +26,7 @@ export const userController = {
   }),
 
   searchUser: catchAsync(async (req:Request,res:Response,next:NextFunction) => {
-    const userData = req.body;
+    const userData = req.query;
     const serarchedUsers = await userService.searchUser(userData);
      res.status(200).json({
             success:true,
