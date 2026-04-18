@@ -23,20 +23,13 @@ const AccountSchema = new Schema(
   }
 );
 
-// Define virtual AFTER schema (stable way)
 AccountSchema.virtual("availableBalance").get(function (this: any): number {
   return (this.balance ?? 0) - (this.lockedAmount ?? 0);
 });
-
-// Base type from schema
 type AccountBase = InferSchemaType<typeof AccountSchema>;
-
-// Extend with virtuals manually (this fixes the TS error)
 export type AccountDocument = AccountBase & {
   availableBalance: number;
-  // Add more virtuals here in future, e.g. totalLocked?: number;
 };
 
-// Model
 export const AccountModel: Model<AccountDocument> = 
-  mongoose.model<AccountDocument>("BankAccount", AccountSchema);
+  mongoose.model<AccountDocument>("bankaccounts", AccountSchema);

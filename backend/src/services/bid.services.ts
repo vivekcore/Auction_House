@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { BidModel } from "../models/bidModel.js";
 import ApiError from "../utils/apiError.js";
+import { formatZodError } from "../utils/zodError.js";
 import z from "zod";
 import { mongoId } from "../utils/mongoId.js";
 import { AuctionModel } from "../models/auctionModel.js";
@@ -13,46 +14,43 @@ export const bidServices = {
       auctionId: mongoId("auctionId"),
       amount: z
         .number()
-        .min(5)
-        .refine((val) => val % 5 === 0),
+        .min(5, "Bid amount must be at least 5")
+        .refine((val) => val % 5 === 0, "Bid amount must be a multiple of 5"),
     });
     const result = zodSchema.safeParse(Data);
     if (!result.success) {
-      throw new ApiError(400, JSON.stringify(result.error.format()));
+      throw new ApiError(400, formatZodError(result.error));
     }
-    
+
     const { auctionId, amount } = result.data;
     const auction = await AuctionModel.findById(auctionId);
     if (!auction) {
-      throw new ApiError(400, "Auction does not exist");
+      throw new ApiError(400, "Auction not found");
     }
     if (auction.status === "ended") {
-      throw new ApiError(400, "This auction is ended");
+      throw new ApiError(400, "This auction has already ended");
     }
-    if (auction.sellerId === id) {
-      throw new ApiError(400, "You can not place bid on your own auction");
+    if (auction.sellerId?.toString() === id.toString()) {
+      throw new ApiError(400, "You cannot bid on your own auction");
     }
     const checkBalance = await AccountModel.findOne({ userId: id });
     if (!checkBalance) {
-      throw new ApiError(400, "Account not found");
+      throw new ApiError(400, "Account not found. Please contact support.");
     }
     if (checkBalance.availableBalance < amount) {
-      throw new ApiError(400, "Avalible balance is low");
+      throw new ApiError(400, `Insufficient balance. Your available balance is ${checkBalance.availableBalance}, but bid requires ${amount}`);
     }
     const lastbid = await BidModel.findOne({
       auctionId,
     }).sort({ amount: -1 });
     if (lastbid && amount <= lastbid.amount) {
-      throw new ApiError(400, "Bid amount must be greater than current bid");
+      throw new ApiError(400, `Bid must be higher than current highest bid of ${lastbid.amount}`);
     }
-    if(lastbid?.bidderId === id){
-      throw new ApiError(400, "Wait before someone out bids you");
+    if (lastbid?.bidderId.toString() === id.toString()) {
+      throw new ApiError(400, "You are already the highest bidder. Wait for someone else to outbid you");
     }
 
-    
     try {
-      
-
       const previousBids = await BidModel.find({
         auctionId,
         isActive: true,
@@ -60,8 +58,8 @@ export const bidServices = {
       });
       for (const bids of previousBids) {
         const { bidderId, amount, _id } = bids;
-        await AccountModel.findByIdAndUpdate(bidderId, {
-          $inc: { balance: amount, lockedAmount: -amount },
+        await AccountModel.findOneAndUpdate({userId:bidderId}, {
+          $inc: { lockedAmount: -amount },
         }).session(session);
         await BidModel.findByIdAndUpdate(_id, {
           $set: { isActive: false, isLocked: false },
@@ -84,9 +82,9 @@ export const bidServices = {
       const updatedBalance = await AccountModel.findOneAndUpdate(
         { userId: id },
         {
-          $inc: { balance: -amount, lockedAmount: +amount },
+          $inc: { lockedAmount: +amount },
         },
-        { new: true, runValidators: true },
+        { returnDocument: "after", runValidators: true },
       ).session(session);
 
       const UpdatedAuction = await AuctionModel.findByIdAndUpdate(
@@ -94,7 +92,7 @@ export const bidServices = {
         {
           $set: { finalPrice: amount, winnerId: id },
         },
-        { new: true, runValidators: true },
+        { returnDocument: "after", runValidators: true },
       ).session(session);
       await session.commitTransaction();
       return {
@@ -104,7 +102,7 @@ export const bidServices = {
       };
     } catch (error) {
       await session.abortTransaction();
-      throw new ApiError(400, "failed to place bid");
+      throw new ApiError(500, "Failed to place bid. Please try again.");
     } finally {
       session.endSession();
     }
@@ -113,9 +111,9 @@ export const bidServices = {
     const zodSchema = z.object({
       auctionID: mongoId("auctionId"),
     });
-    const result = zodSchema.safeParse({auctionID:auctionId});
+    const result = zodSchema.safeParse({ auctionID: auctionId });
     if (!result.success) {
-      throw new ApiError(400, JSON.stringify(result.error.format()));
+      throw new ApiError(400, formatZodError(result.error));
     }
     const { auctionID } = result.data;
     const allBids = await BidModel.find({ auctionId: auctionID }).populate({
@@ -123,14 +121,14 @@ export const bidServices = {
       model: AuctionModel,
       select: "title sellingPrice finalPrice",
     });
-    if (!allBids) {
-      throw new ApiError(400, "Auction does not exist");
+    if (!allBids || allBids.length === 0) {
+      throw new ApiError(404, "No bids found for this auction");
     }
     return allBids;
   },
   async myBids(id: mongoose.Types.ObjectId, page: number, limit: number) {
     const result = await BidModel.paginate(
-      { bidderId: id,isActive:true },
+      { bidderId: id, isActive: true },
       {
         page,
         limit,
@@ -138,8 +136,8 @@ export const bidServices = {
         lean: true,
       },
     );
-    if (!result) {
-      throw new ApiError(400, "Bids not found");
+    if (!result || result.docs.length === 0) {
+      throw new ApiError(404, "You have no active bids");
     }
     return {
       Message: "My bids",

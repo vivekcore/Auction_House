@@ -1,21 +1,20 @@
-import z, { json } from "zod";
+import z from "zod";
 import mongoose from "mongoose";
 import ApiError from "../utils/apiError.js";
+import { formatZodError } from "../utils/zodError.js";
 import { AuctionModel } from "../models/auctionModel.js";
 import { mongoId } from "../utils/mongoId.js";
-import { AccountModel } from "../models/accoountModel.js";
-import { BidModel } from "../models/bidModel.js";
 export const auctionServices = {
   async createAuction(id: mongoose.Types.ObjectId, Data: any) {
     const zodSchem = z.object({
-      title: z.string().min(5).max(100),
-      description: z.string().min(10).max(500),
-      sellingPrice: z.number().min(5),
+      title: z.string().min(5, "Title must be at least 5 characters").max(100, "Title cannot exceed 100 characters"),
+      description: z.string().min(10, "Description must be at least 10 characters").max(500, "Description cannot exceed 500 characters"),
+      sellingPrice: z.number().min(5, "Starting price must be at least 5"),
     });
 
     const result = zodSchem.safeParse(Data);
     if (!result.success) {
-      throw new ApiError(400, JSON.stringify(result.error.format()));
+      throw new ApiError(400, formatZodError(result.error));
     }
     const { title, description, sellingPrice } = result.data;
 
@@ -27,7 +26,7 @@ export const auctionServices = {
       endDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
     if (!response) {
-      throw new ApiError(400, "Failed to create Auction");
+      throw new ApiError(500, "Failed to create auction. Please try again.");
     }
     return response;
   },
@@ -46,7 +45,7 @@ export const auctionServices = {
       },
     );
     return {
-      message: "Fetched docs",
+      message: "Active auctions fetched successfully",
       data: result.docs,
       total: result.totalDocs,
       page: result.page,
@@ -57,26 +56,23 @@ export const auctionServices = {
   },
 
   async findAuctionByID(auctionId: any) {
-   
-    
     const zodSchema = z.object({
       auctionID: mongoId("auctionId"),
     });
-    const result = zodSchema.safeParse({auctionID:auctionId});
+    const result = zodSchema.safeParse({ auctionID: auctionId });
     if (!result.success) {
-      throw new ApiError(400, JSON.stringify(result.error.format()));
+      throw new ApiError(400, formatZodError(result.error));
     }
     const { auctionID } = result.data;
     const response = await AuctionModel.findById(auctionID);
     if (!response) {
-      throw new ApiError(400, "Aucton not found");
+      throw new ApiError(404, "Auction not found");
     }
     return response;
   },
   async myAuctons(id: mongoose.Types.ObjectId, page: number, limit: number) {
-    console.log("reached myauctons")
     const result = await AuctionModel.paginate(
-      { sellerId: id},
+      { sellerId: id },
       {
         page,
         limit,
@@ -84,11 +80,11 @@ export const auctionServices = {
         lean: true,
       },
     );
-    if (!result) {
-      throw new ApiError(400, "Auctions not found");
+    if (!result || result.docs.length === 0) {
+      throw new ApiError(404, "You have not created any auctions yet");
     }
     return {
-      Message: "My Auctions",
+      Message: "Your auctions fetched successfully",
       data: result.docs,
       total: result.totalDocs,
       page: result.page,
@@ -98,54 +94,32 @@ export const auctionServices = {
     };
   },
 
-  async mannualEndAuction(id:mongoose.Types.ObjectId,auctionId: any) {
-       const session =  await mongoose.startSession();
-           session.startTransaction();
+  async mannualEndAuction(id: mongoose.Types.ObjectId, auctionId: any) {
     const zodSchema = z.object({
       auctionID: mongoId("auctionId"),
     });
-    const result = zodSchema.safeParse({auctionID:auctionId});
+    const result = zodSchema.safeParse({ auctionID: auctionId });
     if (!result.success) {
-      throw new ApiError(400, JSON.stringify(result.error?.format()));
+      throw new ApiError(400, formatZodError(result.error));
     }
     const { auctionID } = result.data;
     const auction = await AuctionModel.findById(auctionID);
-    if(!auction){
-        throw new ApiError(400, "Auction does not exist");
+    if (!auction) {
+      throw new ApiError(404, "Auction not found");
     }
-    if(auction.status === "ended"){
-        throw new ApiError(400,"Auction already ended");
+    if (auction.status === "ended") {
+      throw new ApiError(400, "This auction has already ended");
     }
- 
-    try {
-  
-      const updatedAuction = await AuctionModel.findOneAndUpdate(
-        {sellerId:id},
-        {$set:{status:"ended"}},
-        {returnDocument:"after",runValidators:true}
-    ).session(session);
-    if(auction.winnerId && auction.finalPrice){
-      //debited from winner
-      await AccountModel.findByIdAndUpdate(auction.winnerId,
-        {$inc:{lockedAmount: -auction.finalPrice}}
-      ).session(session);
-      //credited to seller
-      await AccountModel.findByIdAndUpdate(auction.sellerId,
-        {$inc:{balance: auction.finalPrice}}
-      ).session(session);
-      //updated active bid
-      await BidModel.findOneAndUpdate({bidderId:auction.winnerId,isActive:true,isLocked:true},
-        {$set:{isActive:false,isLocked:false}}
-      ).session(session);
+    if (auction.sellerId?.toString() !== id.toString()) {
+      throw new ApiError(403, "You can only end your own auctions");
     }
+
+    const updatedAuction = await AuctionModel.findOneAndUpdate(
+      { sellerId: id, _id: auctionID },
+      { $set: { status: "ended", endDate: new Date() } },
+      { returnDocument: "after", runValidators: true },
+    );
+
     return updatedAuction;
-    } catch (error) {
-      await session.abortTransaction();
-      throw new ApiError(400,JSON.stringify(error))
-    }
-    finally{
-      session.endSession();
-    }
-   
   },
 };

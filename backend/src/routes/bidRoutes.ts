@@ -5,6 +5,7 @@ import { bidController } from "../controllers/bid.controller.js";
 const router: Router = Router();
 
 router.post("/place", userAuth, bidController.placeBid);
-router.get("/:auctionId", userAuth,bidController.getAllBidsOnAuction);
 router.get("/my", userAuth,bidController.myBids);
+router.get("/:auctionId", userAuth,bidController.getAllBidsOnAuction);
+
 export default router;

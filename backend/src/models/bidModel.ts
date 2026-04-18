@@ -25,4 +25,4 @@ BidSchema.index({
   auctionId: 1,
   amount: -1,
 });
-export const BidModel = mongoose.model<BidDocument,mongoose.PaginateModel<BidDocument>>("bid", BidSchema);
+export const BidModel = mongoose.model<BidDocument,mongoose.PaginateModel<BidDocument>>("bids", BidSchema);

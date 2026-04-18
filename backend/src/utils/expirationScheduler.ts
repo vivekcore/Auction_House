@@ -5,7 +5,7 @@ import { AccountModel } from "../models/accoountModel.js";
 import { BidModel } from "../models/bidModel.js";
 
 export const startExpirationJob = () => {
-  cron.schedule("*/5 * * * *", async () => {
+  cron.schedule("*/1 * * * *", async () => {
     const now = new Date();
     const session = await mongoose.startSession();
     try {
@@ -25,10 +25,11 @@ export const startExpirationJob = () => {
       const endedAuctions = await AuctionModel.find({
         status: "ended",
         finalPrice: { $gte: 5 },
+        isTransactionDone:false,
       }).session(session);
-      if (endedAuctions.length > 0) {
+  
         for (const auction of endedAuctions) {
-          const { sellerId, winnerId, finalPrice } = auction;
+          const { sellerId, winnerId, finalPrice,_id } = auction;
           if (sellerId && winnerId && finalPrice) {
             // Add money to seller
             await AccountModel.findOneAndUpdate(
@@ -38,16 +39,18 @@ export const startExpirationJob = () => {
             // Deduct from winner Locked amount
             await AccountModel.findOneAndUpdate(
               { userId: winnerId },
-              { $inc: { lockedAmount: -finalPrice } },
+              { $inc: { lockedAmount: -finalPrice,balance: -finalPrice } },
             ).session(session);
             // Set winner Active bid false
             await BidModel.findOneAndUpdate(
               { bidderId: winnerId, isActive: true, isLocked: true },
               { $set: { isActive: false, isLocked: false } },
             ).session(session);
+            //set transacton done from that auction
+            await AuctionModel.findByIdAndUpdate(_id,{$set:{isTransactionDone:true}}).session(session)
           }
         }
-      }
+      
       await session.commitTransaction();
       const modCount = result.modifiedCount;
       if (modCount > 0) {

@@ -30,4 +30,4 @@ const userSchema = new mongoose.Schema(
 userSchema.index({name:"text",username:"text"});
 
 type userDocument = InferSchemaType<typeof userSchema>;
-export const UserModel = mongoose.model<userDocument>("User", userSchema);
+export const UserModel = mongoose.model<userDocument>("user", userSchema);

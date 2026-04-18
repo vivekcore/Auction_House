@@ -1,21 +1,21 @@
 import z from "zod";
 import ApiError from "../utils/apiError.js";
+import { formatZodError } from "../utils/zodError.js";
 import { UserModel } from "../models/userModel.js";
 import type mongoose from "mongoose";
 
 export const userService = {
 
-  //Update user function
   async updateuser(id: mongoose.Types.ObjectId, userData: any) {
     const user = z.object({
-      name: z.string().min(3).optional(),
-      username: z.string().min(3).optional(),
+      name: z.string().min(3, "Name must be at least 3 characters").optional(),
+      username: z.string().min(3, "Username must be at least 3 characters").optional(),
     });
 
     const zodResponse = user.safeParse(userData);
 
     if (zodResponse.error) {
-      throw new ApiError(400, "Invalid inputs");
+      throw new ApiError(400, formatZodError(zodResponse.error));
     }
 
     const updateData: { username?: string; name?: string } = {};
@@ -24,7 +24,7 @@ export const userService = {
       const isExist = await UserModel.find({ username: userData.username });
 
       if (isExist.length !== 0) {
-        throw new ApiError(409, "Username already taken");
+        throw new ApiError(409, "Username is already taken. Please choose a different one.");
       }
       updateData.username = userData.username;
     }
@@ -43,19 +43,17 @@ export const userService = {
     return updateData;
   },
 
-  //Get All users function
   async getAllUsers() {
     const allUsers = await UserModel.find();
-    if (!allUsers) {
-      throw new ApiError(404, "Users not found");
+    if (!allUsers || allUsers.length === 0) {
+      throw new ApiError(404, "No users found");
     }
     return allUsers;
   },
 
-  //All users wiht matching searh query
   async searchUser(userData: any) {
-    if (!userData.name) {
-      throw new ApiError(400, "Name is missing");
+    if (!userData.name || userData.name.trim() === "") {
+      throw new ApiError(400, "Search query is required");
     }
 
     const searchedUsers = await UserModel.find({
@@ -65,8 +63,8 @@ export const userService = {
       ],
     });
 
-    if(!searchedUsers){
-        throw new ApiError(400,"users not found");
+    if(!searchedUsers || searchedUsers.length === 0){
+        throw new ApiError(404, "No users found matching your search");
     }
     return searchedUsers;
   },
