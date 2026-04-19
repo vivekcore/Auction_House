@@ -1,5 +1,6 @@
 import mongoose, {Document, type InferSchemaType} from "mongoose";
 import paginate from 'mongoose-paginate-v2';
+import { title } from "node:process";
 
 
 const AuctionSchema = new mongoose.Schema(
@@ -22,6 +23,7 @@ type AuctionDocument = InferSchemaType<typeof AuctionSchema>;
 AuctionSchema.plugin(paginate)
 AuctionSchema.index({endDate:1,status:1,})
 AuctionSchema.index({status:1,finalPrice:1})
+AuctionSchema.index({title:"text", description:"text"});
 //AuctionSchema.index({endDate:1},{expireAfterSeconds:0})
 
 export const AuctionModel = mongoose.model<AuctionDocument, mongoose.PaginateModel<AuctionDocument>>("auctions",AuctionSchema);
