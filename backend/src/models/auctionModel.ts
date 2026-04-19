@@ -8,6 +8,8 @@ const AuctionSchema = new mongoose.Schema(
     title: {type: String, required: true, minLength: 5, maxLength: 100,},
     description: {type: String, required: true, minLength: 10, maxLength: 500,},
     status: {type:String, enum: ["active","ended"],default:"active"},
+    categorie:{type:String, enum: ["electronics","jewelry","properties","toys","vehicles","household","fashion","sports","other"], default:"other"},
+    image: {type:[String],require:true},
     sellerId: {  type: mongoose.Types.ObjectId,  require: true,  ref: "user"},
     winnerId: {  type: mongoose.Types.ObjectId,  default:null},
     isTransactionDone:{type:Boolean, default:false},

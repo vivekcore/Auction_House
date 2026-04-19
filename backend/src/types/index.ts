@@ -1,1 +1,0 @@
-export type sort = "price_asc" | "price_desc" | "endDate_asc" | "newest";

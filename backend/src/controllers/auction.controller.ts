@@ -23,11 +23,13 @@ export const auctionController = {
       const limit = parseInt(req.query.limit as string) || 10;
       const search = req.query.search;
       const sort = req.query.sort;
+      const categorie = req.query.categorie
       const ActiveAuctons = await auctionServices.allActiveAuctions(
         page,
         limit,
         search,
-        sort
+        sort,
+        categorie,
       );
       res.status(200).json({
         success: true,

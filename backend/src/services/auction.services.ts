@@ -4,7 +4,7 @@ import ApiError from "../utils/apiError.js";
 import { formatZodError } from "../utils/zodError.js";
 import { AuctionModel } from "../models/auctionModel.js";
 import { mongoId } from "../utils/mongoId.js";
-import type { sort } from "../types/index.js";
+
 export const auctionServices = {
   async createAuction(id: mongoose.Types.ObjectId, Data: any) {
     const zodSchem = z.object({
@@ -17,16 +17,36 @@ export const auctionServices = {
         .min(10, "Description must be at least 10 characters")
         .max(500, "Description cannot exceed 500 characters"),
       sellingPrice: z.number().min(5, "Starting price must be at least 5"),
+      categorie: z
+        .enum([
+          "electronics",
+          "jewelry",
+          "properties",
+          "toys",
+          "vehicles",
+          "household",
+          "fashion",
+          "sports",
+          "other",
+        ])
+        .default("other"),
+      image: z.array(
+        z
+          .url({ message: "Invalid url format" })
+          .min(1, "At least one image is required"),
+      ),
     });
 
     const result = zodSchem.safeParse(Data);
     if (!result.success) {
       throw new ApiError(400, formatZodError(result.error));
     }
-    const { title, description, sellingPrice } = result.data;
+    const { title, description, sellingPrice, categorie, image } = result.data;
 
     const response = AuctionModel.create({
       title,
+      categorie,
+      image,
       description,
       sellingPrice,
       sellerId: id,
@@ -38,119 +58,44 @@ export const auctionServices = {
     return response;
   },
 
-  async allActiveAuctions(page: number, limit: number, search: any, sort: any) {
-    let result: any;
+  async allActiveAuctions(
+    page: number,
+    limit: number,
+    search: any,
+    sort: any,
+    categorie: any,
+  ) {
+    const query: any = {
+      status: "active",
+      endDate: { $gt: new Date() },
+    };
+
     if (search) {
-      if (search.trim() === "") {
-        throw new ApiError(400, "Search query is required");
-      }
-      result = await AuctionModel.paginate(
-        {
-          $or: [
-            { title: { $regex: search, $options: "i" } },
-            { description: { $regex: search, $options: "i" } },
-          ],
-          status: "active",
-          endDate: { $gt: new Date() },
-        },
-        {
-          page,
-          limit,
-          sort: { createdAt: -1 },
-          lean: true,
-        },
-      );
-      if (!result || result.length === 0) {
-        throw new ApiError(404, "No Auction found matching your search");
-      }
-    } else if (sort) {
-      if (sort.trim() === "") {
-        throw new ApiError(400, "Sort query is required");
-      }
-      if (sort === "price_asc") {
-        result = await AuctionModel.paginate(
-          {
-            endDate: { $gt: new Date() },
-            status: "active",
-          },
-          {
-            page,
-            limit,
-            sort: { sellingPrice: 1 },
-            lean: true,
-          },
-        );
-        if (!result || result.length === 0) {
-          throw new ApiError(404, "No Auction found matching your sort");
-        }
-      } else if (sort === "price_desc") {
-        result = await AuctionModel.paginate(
-          {
-            endDate: { $gt: new Date() },
-            status: "active",
-          },
-          {
-            page,
-            limit,
-            sort: { sellingPrice: -1 },
-            lean: true,
-          },
-        );
-        if (!result || result.length === 0) {
-          throw new ApiError(404, "No Auction found matching your sort");
-        }
-      } else if (sort === "endDate_asc") {
-        result = await AuctionModel.paginate(
-          {
-            endDate: { $gt: new Date() },
-            status: "active",
-          },
-          {
-            page,
-            limit,
-            sort: { endDate: 1 },
-            lean: true,
-          },
-        );
-        if (!result || result.length === 0) {
-          throw new ApiError(404, "No Auction found matching your sort");
-        }
-      } else if (sort === "newest") {
-        result = await AuctionModel.paginate(
-          {
-            endDate: { $gt: new Date() },
-            status: "active",
-          },
-          {
-            page,
-            limit,
-            sort: { createdAt: -1 },
-            lean: true,
-          },
-        );
-        if (!result || result.length === 0) {
-          throw new ApiError(404, "No Auction found matching your sort");
-        }
-      } else {
-        throw new ApiError(400, "Invalid sort query");
-      }
-    } else {
-      result = await AuctionModel.paginate(
-        {
-          endDate: { $gt: new Date() },
-          status: "active",
-        },
-        {
-          page,
-          limit,
-          sort: { createdAt: -1 },
-          lean: true,
-        },
-      );
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
     }
-    if (!result || result.length === 0) {
-      throw new ApiError(404, "No Auction found");
+
+    if (categorie) {
+      query.categorie = categorie;
     }
+
+    const sortOptions: any = {
+      price_asc: { sellingPrice: 1 },
+      price_desc: { sellingPrice: -1 },
+      endDate_asc: { endDate: 1 },
+      newest: { createdAt: -1 },
+    };
+    const sortBy = sortOptions[sort] || { createdAt: -1 };
+
+    const result = await AuctionModel.paginate(query, {
+      page,
+      limit,
+      sort: sortBy,
+      lean: true,
+    });
+
     return {
       message: "Active auctions fetched successfully",
       data: result.docs,

@@ -27,8 +27,9 @@ export const bidServices = {
     if (!auction) {
       throw new ApiError(400, "Auction not found");
     }
-    if (auction.status === "ended") {
+    if (auction.status === "ended" || !auction.endDate) {
       throw new ApiError(400, "This auction has already ended");
+      return;
     }
     if (auction.sellerId?.toString() === id.toString()) {
       throw new ApiError(400, "You cannot bid on your own auction");
@@ -38,16 +39,25 @@ export const bidServices = {
       throw new ApiError(400, "Account not found. Please contact support.");
     }
     if (checkBalance.availableBalance < amount) {
-      throw new ApiError(400, `Insufficient balance. Your available balance is ${checkBalance.availableBalance}, but bid requires ${amount}`);
+      throw new ApiError(
+        400,
+        `Insufficient balance. Your available balance is ${checkBalance.availableBalance}, but bid requires ${amount}`,
+      );
     }
     const lastbid = await BidModel.findOne({
       auctionId,
     }).sort({ amount: -1 });
     if (lastbid && amount <= lastbid.amount) {
-      throw new ApiError(400, `Bid must be higher than current highest bid of ${lastbid.amount}`);
+      throw new ApiError(
+        400,
+        `Bid must be higher than current highest bid of ${lastbid.amount}`,
+      );
     }
     if (lastbid?.bidderId.toString() === id.toString()) {
-      throw new ApiError(400, "You are already the highest bidder. Wait for someone else to outbid you");
+      throw new ApiError(
+        400,
+        "You are already the highest bidder. Wait for someone else to outbid you",
+      );
     }
 
     try {
@@ -58,9 +68,12 @@ export const bidServices = {
       });
       for (const bids of previousBids) {
         const { bidderId, amount, _id } = bids;
-        await AccountModel.findOneAndUpdate({userId:bidderId}, {
-          $inc: { lockedAmount: -amount },
-        }).session(session);
+        await AccountModel.findOneAndUpdate(
+          { userId: bidderId },
+          {
+            $inc: { lockedAmount: -amount },
+          },
+        ).session(session);
         await BidModel.findByIdAndUpdate(_id, {
           $set: { isActive: false, isLocked: false },
         }).session(session);
@@ -79,18 +92,36 @@ export const bidServices = {
         { session },
       );
 
+      const FIVE_MINUTES = 5 * 60 * 1000;
+      const timeLeft = auction.endDate.getTime() - new Date().getTime();
+      let UpdatedAuction:any;
+      if (timeLeft <= FIVE_MINUTES) {
+        const getTime = auction.endDate.getTime() + FIVE_MINUTES;
+        UpdatedAuction = await AuctionModel.findByIdAndUpdate(
+          auctionId,
+          {
+            $set: {
+              finalPrice: amount,
+              winnerId: id,
+              endDate: new Date(getTime),
+            },
+          },
+          { returnDocument: "after", runValidators: true },
+        ).session(session);
+      } else {
+         UpdatedAuction = await AuctionModel.findByIdAndUpdate(
+          auctionId,
+          {
+            $set: { finalPrice: amount, winnerId: id },
+          },
+          { returnDocument: "after", runValidators: true },
+        ).session(session);
+      }
+
       const updatedBalance = await AccountModel.findOneAndUpdate(
         { userId: id },
         {
           $inc: { lockedAmount: +amount },
-        },
-        { returnDocument: "after", runValidators: true },
-      ).session(session);
-
-      const UpdatedAuction = await AuctionModel.findByIdAndUpdate(
-        auctionId,
-        {
-          $set: { finalPrice: amount, winnerId: id },
         },
         { returnDocument: "after", runValidators: true },
       ).session(session);

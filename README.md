@@ -46,31 +46,24 @@ backend/
 
 ## 📦 Features
 
-### ✅ Completed
+### ✅ All Completed
 
 | Feature | Description |
 |---|---|
 | User Authentication | Email/password + Google OAuth via Better-Auth |
 | Virtual Balance | Users get $1,000–$10,000 on signup |
-| Create Auction | List items with title, description, starting price |
+| Create Auction | List items with title, description, starting price, category, images |
 | Place Bid | Bid on auctions with amount validation |
 | Bid Locking | Escrow system — funds locked when bidding |
 | Auto-Expire | Cron job ends auctions after 24 hours |
 | Money Transfer | P2P transfers with transaction support |
 | Pagination | All list endpoints support pagination |
 | Service Layer | Clean separation of concerns |
-
-### 🚧 Upcoming
-
-| Feature | Priority |
-|---|---|
-| Image Upload | 🔴 High |
-| Search Auctions | 🔴 High |
-| Sort Options | 🟡 Medium |
-| Categories | 🟡 Medium |
-| Auto-Extend | 🟡 Medium |
-| Daily Rewards | 🟢 Low |
-| Referral System | 🟢 Low |
+| Search | Search auctions by title or description |
+| Sort Options | Sort by price (asc/desc), endDate, newest |
+| Categories | 9 categories (electronics, jewelry, fashion, etc.) |
+| Image Upload | Array of image URLs per auction |
+| Auto-Extend | +5 minutes if bid placed in last 5 minutes |
 
 ---
 
@@ -139,10 +132,20 @@ User B's locked $600 released
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/v1/auction/create` | Create new auction |
-| `GET` | `/api/v1/auction/list` | List active auctions |
+| `GET` | `/api/v1/auction/list` | List active auctions (with search, sort, category filters) |
 | `GET` | `/api/v1/auction/:id` | Get auction by ID |
 | `GET` | `/api/v1/auction/my` | Get user's auctions |
 | `POST` | `/api/v1/auction/:id/end` | Manually end auction |
+
+#### Query Parameters for `/auction/list`
+
+| Parameter | Example | Description |
+|---|---|---|
+| `page` | `?page=1` | Page number (default: 1) |
+| `limit` | `?limit=10` | Items per page (default: 10) |
+| `search` | `?search=iphone` | Search title/description |
+| `sort` | `?sort=price_asc` | Sort: price_asc, price_desc, endDate_asc, newest |
+| `categorie` | `?categorie=electronics` | Filter by category |
 
 ### Bids
 
@@ -188,14 +191,17 @@ updatedAt     Date
 
 ```
 title         String   (5–100 chars)
-description   String   (10–500 chars)
-status        "active" | "ended"
+description  String   (10–500 chars)
+status       "active" | "ended"
+categorie    String   (electronics, jewelry, properties, toys, vehicles, household, fashion, sports, other)
+image         String[] (array of image URLs)
 sellerId      ObjectId (ref: user)
-winnerId      ObjectId (ref: user, nullable)
+winnerId     ObjectId (ref: user, nullable)
+isTransactionDone  Boolean (default: false)
 sellingPrice  Number   (minimum: 5)
-finalPrice    Number   (nullable)
-endDate       Date     (24 hours from creation)
-createdAt     Date
+finalPrice   Number   (nullable)
+endDate      Date     (24 hours from creation, extends +5min on late bids)
+createdAt    Date
 ```
 
 ### Bid
@@ -222,6 +228,7 @@ createdAt   Date
   2. Transfer locked funds to the seller
   3. Release locked amounts for losing bidders
   4. Mark the winning bid as inactive
+  5. Mark auction as `isTransactionDone: true`
 
 ---
 
@@ -280,15 +287,22 @@ POST /api/v1/auth/sign-up
 # 2. Check balance (should be ~$1,000–$10,000)
 GET /api/v1/account/balance
 
-# 3. Create an auction
+# 3. Create an auction with category and images
 POST /api/v1/auction/create
 {
-  "title": "Vintage Watch",
-  "description": "Beautiful vintage watch in working condition",
-  "sellingPrice": 100
+  "title": "iPhone 15 Pro",
+  "description": "Like new condition, with box",
+  "sellingPrice": 500,
+  "categorie": "electronics",
+  "image": ["https://example.com/iphone1.jpg"]
 }
 
-# 4. Place a bid (from another user account)
+# 4. List auctions with filters
+GET /api/v1/auction/list?categorie=electronics&sort=price_asc
+GET /api/v1/auction/list?search=iphone&sort=newest
+GET /api/v1/auction/list?sort=endDate_asc
+
+# 5. Place a bid (from another user account)
 POST /api/v1/bid/place
 {
   "auctionId": "<auction_id>",
@@ -311,7 +325,10 @@ This project demonstrates:
 7. **Service Architecture** — Controllers, services, separation of concerns
 8. **Error Handling** — Custom error classes, middleware
 9. **Validation** — Zod schemas, input sanitization
-10. **Pagination** — Cursor/offset, filtering
+10. **Pagination** — Offset-based pagination
+11. **Search** — Regex-based search, text indexes
+12. **Filtering** — Dynamic query building
+13. **Auto-Extend Logic** — Time-based event handling
 
 ---
 
