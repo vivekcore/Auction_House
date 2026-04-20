@@ -22,6 +22,7 @@ export function createAuth() {
     database: mongodbAdapter(mongoose.connection.db as Db, {
       usePlural: false,
     }),
+    secret: process.env.BETTER_AUTH_SECRET,
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
     basePath: "/api/v1/auth",
 
@@ -69,10 +70,16 @@ export function createAuth() {
     },
     socialProviders: {
       google: {
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        prompt: "select_account",
+        clientId: process.env.GOOGLE_CLIENT_ID as string,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       },
     },
     trustedOrigins: ["http://localhost:5173", "http://localhost:3000"],
+    advanced:{
+      crossSubDomainCookies:{
+        enabled:true,
+      }
+    }
   });
 }

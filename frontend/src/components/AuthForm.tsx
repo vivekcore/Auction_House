@@ -5,9 +5,10 @@ import { useState } from "react"
 interface formProps {
   type: "signin" | "signup"
   onSubmit: (e: React.ChangeEvent<HTMLFormElement>) => void
-  onNavigate: () => void
+  onNavigate: () => void,
+  google: () => void,
 }
-export default function AuthForm({ type, onSubmit, onNavigate }: formProps) {
+export default function AuthForm({ type, onSubmit, onNavigate,google }: formProps) {
 
   const [showPassword,setShowPassword] = useState(false);
   return (
@@ -33,6 +34,7 @@ export default function AuthForm({ type, onSubmit, onNavigate }: formProps) {
               </p>
 
               <button
+              onClick={google}
                 type="button"
                 className="mt-8 cursor-pointer flex h-12 w-full items-center justify-center rounded-full bg-gray-500/10"
               >
@@ -59,6 +61,7 @@ export default function AuthForm({ type, onSubmit, onNavigate }: formProps) {
               </p>
 
               <button
+              onClick={google}
                 type="button"
                 className="mt-8 cursor-pointer flex h-12 w-full items-center justify-center rounded-full bg-gray-500/10"
               >

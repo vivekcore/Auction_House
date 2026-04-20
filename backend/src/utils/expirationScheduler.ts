@@ -5,7 +5,7 @@ import { AccountModel } from "../models/accoountModel.js";
 import { BidModel } from "../models/bidModel.js";
 
 export const startExpirationJob = () => {
-  cron.schedule("*/1 * * * *", async () => {
+  cron.schedule("*/5 * * * *", async () => {
     const now = new Date();
     const session = await mongoose.startSession();
     try {
