@@ -1,15 +1,15 @@
 import { BrowserRouter, Route, Routes } from "react-router"
-import Home from "./app/home"
-import Signup from "./app/auth/signup"
-import Signin from "./app/auth/signin"
+import LandingPage from "@/pages/landing/landingpage"
+import Signup from "./features/auth/pages/signup"
+import Signin from "./features/auth/pages/signin"
 export function App() {
   return (
     <div className="min-h-svh w-full">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/signin" element={<Signin/>} />
-          <Route path="/signup" element={<Signup/>} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/signin" element={<Signin />} />
+          <Route path="/signup" element={<Signup />} />
         </Routes>
       </BrowserRouter>
     </div>

@@ -1,4 +1,4 @@
-import AuthForm from "@/components/AuthForm"
+import AuthForm from "@/features/auth/components/AuthForm"
 import { useNavigate } from "react-router"
 
 const Signup = () => {
