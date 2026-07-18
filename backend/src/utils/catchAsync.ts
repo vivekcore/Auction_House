@@ -1,4 +1,3 @@
-// src/utils/catchAsync.ts
 import type{ Request, Response, NextFunction } from 'express';
 
 type AsyncFunction = (

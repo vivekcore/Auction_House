@@ -1,6 +1,6 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, type Auth, type BetterAuthOptions } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
-import { username } from "better-auth/plugins";
+import { username, type BearerOptions } from "better-auth/plugins";
 import { AccountModel } from "../models/accoountModel.js";
 import dotenv from "dotenv";
 import type { Db } from "mongodb";
@@ -8,78 +8,79 @@ import mongoose from "../db/db.js";
 
 dotenv.config();
 
-export let auth: ReturnType<typeof betterAuth> | undefined;
-export function getAuth() {
-  if (!auth) {
-    throw new Error("Auth not initialized. Call createAuth() first.");
-  }
-  return auth;
-}
-export function createAuth() {
-  if (auth) return auth;
-  //@ts-ignore
-  auth = betterAuth({
-    database: mongodbAdapter(mongoose.connection.db as Db, {
-      usePlural: false,
-    }),
-    secret: process.env.BETTER_AUTH_SECRET,
-    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
-    basePath: "/api/v1/auth",
+export let authInstance: Auth<BetterAuthOptions>;
 
-    emailAndPassword: {
-      enabled: true,
-    },
-
-    plugins: [
-      username({
-        minUsernameLength: 3,
-        maxUsernameLength: 20,
-        displayUsernameValidator: (displayUsername) => {
-          return /^[a-zA-Z0-9_-]+$/.test(displayUsername);
-        },
+export const getAuth = (): Auth<BetterAuthOptions> => {
+  if (!authInstance) {
+    const Db = mongoose.connection.db as Db
+    if (!Db) {
+      throw new Error("DB not connected yet. Call ConnectDB() first.");
+    }
+    authInstance = betterAuth<BetterAuthOptions>({
+      database: mongodbAdapter(Db, {
+        client: mongoose.connection.getClient(),
+        usePlural: false,
       }),
-    ],
+      secret: process.env.BETTER_AUTH_SECRET,
+      baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+      basePath: "/api/v1/auth",
 
-    user: {
-      additionalFields: {
-        image: {
-          type: "string",
-          required: false,
-          defaultValue: "https://placehold.net/avatar.svg",
-        },
-        usernameSetup: {
-          type: "boolean",
-          defaultValue: false,
-        },
+      emailAndPassword: {
+        enabled: true,
       },
-    },
 
-    databaseHooks: {
+      plugins: [
+        username({
+          minUsernameLength: 3,
+          maxUsernameLength: 20,
+          displayUsernameValidator: (displayUsername) => {
+            return /^[a-zA-Z0-9_-]+$/.test(displayUsername);
+          },
+        }),
+      ],
+
       user: {
-        create: {
-          after: async (user, context) => {
-            const balance = 1 + Math.random() * 10000;
-            await AccountModel.insertOne({
-              userId:new mongoose.Types.ObjectId(user.id),
-              balance,
-              availableBalance:balance,
-            });
+        additionalFields: {
+          image: {
+            type: "string",
+            required: false,
+            defaultValue: "https://placehold.net/avatar.svg",
+          },
+          usernameSetup: {
+            type: "boolean",
+            defaultValue: false,
           },
         },
       },
-    },
-    socialProviders: {
-      google: {
-        prompt: "select_account",
-        clientId: process.env.GOOGLE_CLIENT_ID as string,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+
+      databaseHooks: {
+        user: {
+          create: {
+            after: async (user, context) => {
+              const balance = 1 + Math.random() * 10000;
+              await AccountModel.insertOne({
+                userId: new mongoose.Types.ObjectId(user.id),
+                balance,
+                availableBalance: balance,
+              });
+            },
+          },
+        },
       },
-    },
-    trustedOrigins: ["http://localhost:5173", "http://localhost:3000"],
-    advanced:{
-      crossSubDomainCookies:{
-        enabled:true,
-      }
-    }
-  });
-}
+      socialProviders: {
+        google: {
+          prompt: "select_account",
+          clientId: process.env.GOOGLE_CLIENT_ID as string,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+        },
+      },
+      trustedOrigins: ["http://localhost:5173", "http://localhost:3000"],
+      advanced: {
+        crossSubDomainCookies: {
+          enabled: true,
+        },
+      },
+    });
+  }
+  return authInstance;
+};

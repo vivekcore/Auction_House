@@ -5,19 +5,15 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsc -b && node ./dist/index.js"
+    "build": "tsc -b",
+    "start": "node ./dist/index.js",
+    "dev": "pnpm build && pnpm start"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@better-auth/mongo-adapter": "^1.6.0",
-    "@types/bcrypt": "^6.0.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^25.5.2",
     "bcrypt": "^6.0.0",
     "better-auth": "^1.6.0",
     "cors": "^2.8.6",
@@ -32,7 +28,12 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/mongoose-paginate-v2": "^1.6.5",
+    "@better-auth/mongo-adapter": "^1.6.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.5.2",
     "@types/node-cron": "^3.0.11"
   }
 }

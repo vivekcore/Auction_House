@@ -17,7 +17,7 @@ export const userAuth = async (
   if (!session) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  console.log(session.user.id);
+
   req.userId = new mongoose.Types.ObjectId(session.user.id);
   req.name = session.user.name;
 

@@ -5,7 +5,7 @@ import cors from "cors";
 import { ConnectDB } from "./db/db.js";
 import rootRouter from "./routes/index.js";
 import { toNodeHandler } from "better-auth/node";
-import { createAuth, getAuth } from "./auth/auth.js";
+import { getAuth } from "./auth/auth.js";
 import { startExpirationJob } from "./utils/expirationScheduler.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 const app: Application = express();
@@ -24,7 +24,7 @@ app.use(express.json());
 app.listen(process.env.PORT, async () => {
   try {
     await ConnectDB();
-    createAuth();
+    getAuth();
     const auth = getAuth();
     app.all("/api/v1/auth/{*path}", toNodeHandler(auth));
     app.use("/api/v1", rootRouter);
