@@ -1,8 +1,23 @@
 import AuthForm from "@/features/auth/components/AuthForm"
 import { useNavigate } from "react-router"
-
+import { authClient } from "@/lib/auth-client"
 const Signup = () => {
   const navigate = useNavigate()
+
+async function handlegoogleSignup(){
+  await authClient.signIn.social(
+        {
+          provider: "google",
+          callbackURL: "http://localhost:5173",
+        },
+        {
+          onError: () => {
+            return
+          },
+        }
+      )
+ }
+
   function handlesubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = e.currentTarget
@@ -21,6 +36,7 @@ const Signup = () => {
         type="signup"
         onNavigate={() => navigate("/signin")}
         onSubmit={handlesubmit}
+        google={handlegoogleSignup}
       />
     </div>
   )
