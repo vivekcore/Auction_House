@@ -6,138 +6,173 @@ import z from "zod";
 import { mongoId } from "../utils/mongoId.js";
 import { AuctionModel } from "../models/auctionModel.js";
 import { AccountModel } from "../models/accoountModel.js";
+
 export const bidServices = {
   async placeBid(id: mongoose.Types.ObjectId, Data: any) {
     const session = await mongoose.startSession();
-    session.startTransaction();
-    const zodSchema = z.object({
-      auctionId: mongoId("auctionId"),
-      amount: z
-        .number()
-        .min(5, "Bid amount must be at least 5")
-        .refine((val) => val % 5 === 0, "Bid amount must be a multiple of 5"),
-    });
-    const result = zodSchema.safeParse(Data);
-    if (!result.success) {
-      throw new ApiError(400, formatZodError(result.error));
-    }
-
-    const { auctionId, amount } = result.data;
-    const auction = await AuctionModel.findById(auctionId);
-    if (!auction) {
-      throw new ApiError(400, "Auction not found");
-    }
-    if (auction.status === "ended" || !auction.endDate) {
-      throw new ApiError(400, "This auction has already ended");
-      return;
-    }
-    if (auction.sellerId?.toString() === id.toString()) {
-      throw new ApiError(400, "You cannot bid on your own auction");
-    }
-    const checkBalance = await AccountModel.findOne({ userId: id });
-    if (!checkBalance) {
-      throw new ApiError(400, "Account not found. Please contact support.");
-    }
-    if (checkBalance.availableBalance < amount) {
-      throw new ApiError(
-        400,
-        `Insufficient balance. Your available balance is ${checkBalance.availableBalance}, but bid requires ${amount}`,
-      );
-    }
-    const lastbid = await BidModel.findOne({
-      auctionId,
-    }).sort({ amount: -1 });
-    if (lastbid && amount <= lastbid.amount) {
-      throw new ApiError(
-        400,
-        `Bid must be higher than current highest bid of ${lastbid.amount}`,
-      );
-    }
-    if (lastbid?.bidderId.toString() === id.toString()) {
-      throw new ApiError(
-        400,
-        "You are already the highest bidder. Wait for someone else to outbid you",
-      );
-    }
 
     try {
-      const previousBids = await BidModel.find({
-        auctionId,
-        isActive: true,
-        isLocked: true,
-      });
-      for (const bids of previousBids) {
-        const { bidderId, amount, _id } = bids;
-        await AccountModel.findOneAndUpdate(
-          { userId: bidderId },
-          {
-            $inc: { lockedAmount: -amount },
-          },
-        ).session(session);
-        await BidModel.findByIdAndUpdate(_id, {
-          $set: { isActive: false, isLocked: false },
+      const result = await session.withTransaction(async () => {
+        const zodSchema = z.object({
+          auctionId: mongoId("auctionId"),
+          amount: z
+            .number()
+            .min(5, "Bid amount must be at least 5")
+            .refine(
+              (val) => val % 5 === 0,
+              "Bid amount must be a multiple of 5",
+            ),
+        });
+        const result = zodSchema.safeParse(Data);
+        if (!result.success) {
+          throw new ApiError(400, formatZodError(result.error));
+        }
+
+        const { auctionId, amount } = result.data;
+        const auction = await AuctionModel.findById(auctionId).session(session);
+        if (!auction) {
+          throw new ApiError(400, "Auction not found");
+        }
+        if (auction.status === "ended" || !auction.endDate) {
+          throw new ApiError(400, "This auction has already ended");
+          return;
+        }
+        if (auction.sellerId?.toString() === id.toString()) {
+          throw new ApiError(400, "You cannot bid on your own auction");
+        }
+        const checkBalance = await AccountModel.findOne({ userId: id }).session(
+          session,
+        );
+        if (!checkBalance) {
+          throw new ApiError(400, "Account not found. Please contact support.");
+        }
+        if (checkBalance.availableBalance < amount) {
+          throw new ApiError(
+            400,
+            `Insufficient balance. Your available balance is ${checkBalance.availableBalance}, but bid requires ${amount}`,
+          );
+        }
+        const lastbid = await BidModel.findOne({
+          auctionId,
+        })
+          .sort({ amount: -1 })
+          .session(session);
+        if (lastbid && amount <= lastbid.amount) {
+          throw new ApiError(
+            400,
+            `Bid must be higher than current highest bid of ${lastbid.amount}`,
+          );
+        }
+        if (lastbid?.bidderId.toString() === id.toString()) {
+          throw new ApiError(
+            400,
+            "You are already the highest bidder. Wait for someone else to outbid you",
+          );
+        }
+
+        const previousBids = await BidModel.find({
+          auctionId,
+          isActive: true,
+          isLocked: true,
         }).session(session);
-      }
-
-      const response = await BidModel.create(
-        [
-          {
-            auctionId,
-            bidderId: id,
-            amount,
-            isLocked: true,
-            isActive: true,
-          },
-        ],
-        { session },
-      );
-
-      const FIVE_MINUTES = 5 * 60 * 1000;
-      const timeLeft = auction.endDate.getTime() - new Date().getTime();
-      let UpdatedAuction:any;
-      if (timeLeft <= FIVE_MINUTES) {
-        const getTime = auction.endDate.getTime() + FIVE_MINUTES;
-        UpdatedAuction = await AuctionModel.findByIdAndUpdate(
-          auctionId,
-          {
-            $set: {
-              finalPrice: amount,
-              winnerId: id,
-              endDate: new Date(getTime),
+        for (const bids of previousBids) {
+          const { bidderId, amount, _id } = bids;
+          await AccountModel.findOneAndUpdate(
+            { userId: bidderId },
+            {
+              $inc: { lockedAmount: -amount },
             },
-          },
-          { returnDocument: "after", runValidators: true },
-        ).session(session);
-      } else {
-         UpdatedAuction = await AuctionModel.findByIdAndUpdate(
-          auctionId,
-          {
-            $set: { finalPrice: amount, winnerId: id },
-          },
-          { returnDocument: "after", runValidators: true },
-        ).session(session);
-      }
+          ).session(session);
+          await BidModel.findByIdAndUpdate(_id, {
+            $set: { isActive: false, isLocked: false },
+          }).session(session);
+        }
 
-      const updatedBalance = await AccountModel.findOneAndUpdate(
-        { userId: id },
-        {
-          $inc: { lockedAmount: +amount },
-        },
-        { returnDocument: "after", runValidators: true },
-      ).session(session);
-      await session.commitTransaction();
-      return {
-        BidCreated: response,
-        UserUpdatedBalace: updatedBalance,
-        UpdatedAuction,
-      };
+        const response = await BidModel.create(
+          [
+            {
+              auctionId,
+              bidderId: id,
+              amount,
+              isLocked: true,
+              isActive: true,
+            },
+          ],
+          { session },
+        );
+
+        const FIVE_MINUTES = 5 * 60 * 1000;
+        const timeLeft = auction.endDate.getTime() - new Date().getTime();
+        let UpdatedAuction: any;
+        if (timeLeft <= FIVE_MINUTES) {
+          const getTime = auction.endDate.getTime() + FIVE_MINUTES;
+          UpdatedAuction = await AuctionModel.findOneAndUpdate(
+            {
+              _id: auctionId,
+              status: "active",
+              finalPrice: { $lt: amount },
+            },
+            {
+              $set: {
+                finalPrice: amount,
+                winnerId: id,
+                endDate: getTime,
+              },
+            },
+            {
+              returnDocument:"after",
+              session,
+            },
+          );
+        } else {
+          UpdatedAuction = await AuctionModel.findOneAndUpdate(
+            {
+              _id: auctionId,
+              status: "active",
+              finalPrice: { $lt: amount },
+            },
+            {
+              $set: {
+                finalPrice: amount,
+                winnerId: id,
+              },
+            },
+            {
+              returnDocument:"after",
+              session,
+            },
+          );
+        }
+        if (!UpdatedAuction) {
+          throw new ApiError(
+            400,
+            "Bid must be higher than the current highest bid",
+          );
+        }
+
+        const updatedBalance = await AccountModel.findOneAndUpdate(
+          { userId: id },
+          {
+            $inc: { lockedAmount: +amount },
+          },
+          { returnDocument: "after", runValidators: true },
+        ).session(session);
+
+        return {
+          BidCreated: response,
+          UserUpdatedBalace: updatedBalance,
+          UpdatedAuction,
+        };
+      });
+      return result;
     } catch (error) {
-      await session.abortTransaction();
-      throw new ApiError(500, "Failed to place bid. Please try again.");
+      console.log("Real Error " + error )
+      throw error;
     } finally {
       session.endSession();
     }
   },
+
   async getAllBidsOnAuction(auctionId: any) {
     const zodSchema = z.object({
       auctionID: mongoId("auctionId"),
